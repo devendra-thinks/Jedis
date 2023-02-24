@@ -40,8 +40,8 @@ public class TcpServer {
                         String string = new String(buff, 0 , result);
                         logger.info(string);
                         // write to output stream and flush
-                        out.write(string.getBytes());
-                        out.flush();
+//                        out.write(string.getBytes());
+//                        out.flush();
                     }
                 }catch (Exception e){
                     // log failure
