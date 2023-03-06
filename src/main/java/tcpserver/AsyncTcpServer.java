@@ -1,15 +1,21 @@
 package tcpserver;
 
+import core.Command;
+import core.CommandExecutor;
+import core.Decoder;
+import core.RedisCommand;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 
 import java.net.InetSocketAddress;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.channels.SelectionKey;
 import java.nio.channels.Selector;
 import java.nio.channels.ServerSocketChannel;
 import java.nio.channels.SocketChannel;
 import java.util.Iterator;
+import java.util.List;
 
 // Single Threaded Tcp server - but concurrent
 // Performs IO in non blocking manner - IO Muliplexing
@@ -66,8 +72,22 @@ public class AsyncTcpServer {
                             continue;
                         }else {
                             // Creates unicode string from bytes read
-                            String res = new String(buffer.array()).trim();
-                            logger.info(String.format("Request received %s", res));
+                            // TODO : move this logic for better place to not break - single responsiblity
+                            List<Object > objects =  (List<Object >)new Decoder(buffer.array()).decode();
+                            String cmd = (String)objects.get(0);
+                            String []args = new String[objects.size() - 1];
+                            String res;
+                            if(cmd.equals("PING")){
+                                for(int i = 1 ; i < objects.size(); i++ ){
+                                    args[i - 1] = (String )objects.get(i);
+                                }
+                                RedisCommand redisCommand = new RedisCommand(Command.PING, args);
+                                res = (String )CommandExecutor.instance.execute(redisCommand);
+                            }else{
+                                res = "-Command Not supported Yet!\r\n";
+                            }
+                            buffer.clear();
+                            buffer.put(res.getBytes());
                             // Write to channel
                             // Flip from read to write
                             buffer.flip();
@@ -78,7 +98,6 @@ public class AsyncTcpServer {
                     }
                 }
             }
-
         }catch (Exception e){
             // chew exception for now
             logger.error("Error occurred!!" , e);
